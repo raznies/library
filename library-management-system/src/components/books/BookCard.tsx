@@ -21,7 +21,7 @@ export default function BookCard({ book }: BookCardProps) {
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
                 <div className="absolute top-2 right-2">
-                    <Badge variant={book.available_copies > 0 ? 'success' : 'secondary'}>
+                    <Badge variant={book.available_copies > 0 ? 'default' : 'secondary'}>
                         {book.available_copies > 0 ? `${book.available_copies} Available` : 'Borrowed'}
                     </Badge>
                 </div>

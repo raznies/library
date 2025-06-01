@@ -4,6 +4,7 @@ export type User = {
     email: string;
     full_name: string;
     membership_type: string;
+    role?: string;
     created_at?: string;
     updated_at?: string;
 }

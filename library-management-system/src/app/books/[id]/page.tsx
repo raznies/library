@@ -64,7 +64,7 @@ export default function BookDetails() {
                 })
                 return
             }
-            setBook(data)
+            setBook(data as unknown as Book)
         } catch (error) {
             console.error('Fetch error:', error);
             toast({
@@ -161,7 +161,7 @@ export default function BookDetails() {
                 await supabase
                     .from('loans')
                     .delete()
-                    .eq('loan_id', loanData.loan_id)
+                    .eq('loan_id', (loanData as any).loan_id)
 
                 toast({
                     title: "Error",

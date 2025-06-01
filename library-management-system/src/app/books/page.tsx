@@ -27,7 +27,7 @@ export default function BookCatalog() {
                 .order('name', { ascending: true })
 
             if (error) throw error
-            setCategories(data.map(category => category.name))
+            setCategories(data?.map((category: any) => category.name) || [])
         } catch (error) {
             console.error('Error fetching categories:', error)
         }
@@ -51,10 +51,10 @@ export default function BookCatalog() {
             }
 
             const { data, error, count } = await query
-
+            
             if (error) throw error
 
-            setBooks(data as Book[])
+            setBooks((data as unknown as Book[]) || [])
             setTotalPages(Math.ceil((count || 0) / booksPerPage))
         } catch (error) {
             console.error('Error fetching books:', error)

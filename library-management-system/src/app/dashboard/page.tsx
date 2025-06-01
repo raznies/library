@@ -23,7 +23,7 @@ const calculateProgress = (borrowed: number, total: number) => {
 }
 
 export default function Dashboard() {
-    const { user } = useAuth()
+    const { user, userRole, loading: authLoading } = useAuth()
     const router = useRouter()
     const [stats, setStats] = useState<DashboardStats>({
         totalbooks: 0,
@@ -34,6 +34,19 @@ export default function Dashboard() {
     const [isLoading, setIsLoading] = useState(true)
     const [isReturning, setIsReturning] = useState<string | null>(null)
     const { toast } = useToast()
+
+    // Redirect admin users to admin dashboard
+    useEffect(() => {
+        if (!authLoading && user && userRole === 'admin') {
+            router.replace('/admin')
+            return
+        }
+        
+        if (!authLoading && !user) {
+            router.replace('/login?redirectTo=/dashboard')
+            return
+        }
+    }, [user, userRole, authLoading, router])
 
     const fetchDashboardData = useCallback(async () => {
         if (!user) {
@@ -97,10 +110,8 @@ export default function Dashboard() {
 
             if (loansError) {
                 throw loansError;
-            }
-
-            if (loansData) {
-                const formattedBooks = loansData.map(loan => ({
+            }            if (loansData) {
+                const formattedBooks = loansData.map((loan: any) => ({
                     id: loan.loan_id,
                     title: loan.books?.title || 'Unknown Title',
                     author: loan.books?.author || 'Unknown Author',
@@ -157,26 +168,47 @@ export default function Dashboard() {
             return
         }
         fetchDashboardData()
-    }, [user, router, fetchDashboardData])
+    }, [user, router, fetchDashboardData])    // Show loading while auth is loading
+    if (authLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-sm text-muted-foreground">Loading your dashboard...</p>
+            </div>
+        )
+    }
 
+    // Show loading while fetching dashboard data
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
                 <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
             </div>
         )
     }
 
     if (!user) return null;
 
-    return (
-        <div className="space-y-8">
+    return (        <div className="space-y-8">
             <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-                <Button variant="outline" onClick={() => fetchDashboardData()}>
-                    <RotateCcw className="mr-2 h-4 w-4"/>
-                    Refresh
-                </Button>
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">Welcome back!</h2>
+                    <p className="text-muted-foreground">
+                        Here's what's happening with your library account
+                    </p>
+                </div>
+                <div className="flex items-center space-x-4">
+                    {userRole && (
+                        <span className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded-full capitalize">
+                            {userRole} Account
+                        </span>
+                    )}
+                    <Button variant="outline" onClick={() => fetchDashboardData()} size="sm">
+                        <RotateCcw className="mr-2 h-4 w-4"/>
+                        Refresh
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Overview */}

@@ -1,57 +1,59 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
-function LoginForm() {
+function ForgotPasswordForm() {
     const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const [message, setMessage] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
-    const { signIn } = useAuth()
     const router = useRouter()
-    const searchParams = useSearchParams()
 
-    // Get redirect destination from URL params
-    const redirectTo = searchParams.get('redirectTo')
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handlePasswordReset = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
+        setMessage(null)
         setIsLoading(true)
 
-        try {
-            await signIn(email, password)
-            // Redirect with the original destination if available
-            const redirectUrl = redirectTo ? `/auth-redirector?redirectTo=${encodeURIComponent(redirectTo)}` : '/auth-redirector'
-            router.push(redirectUrl)
-        } catch (error) {
-            console.error('Login error:', error)
-            setError('Invalid credentials. Please check your email and password.')
-        } finally {
-            setIsLoading(false)
+        // Construct the redirect URL for the password update page
+        // This URL should point to a page in your app where users can set their new password
+        // For example, it could be `${window.location.origin}/reset-password`
+        const redirectUrl = `${window.location.origin}/reset-password`;
+
+
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: redirectUrl,
+        })
+
+        if (resetError) {
+            console.error('Password reset error:', resetError)
+            setError(resetError.message || 'Failed to send password reset email. Please try again.')
+        } else {
+            setMessage('If an account exists for this email, a password reset link has been sent.')
         }
+        setIsLoading(false)
     }
 
     return (
         <div className="flex items-center justify-center min-h-[calc(100vh-14rem)]">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+                    <CardTitle className="text-2xl font-bold">Forgot Password</CardTitle>
                     <CardDescription>
-                        Enter your credentials to access your account
+                        Enter your email address and we&apos;ll send you a link to reset your password.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handlePasswordReset} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
@@ -65,25 +67,7 @@ function LoginForm() {
                                 className="w-full"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={isLoading}
-                                required
-                                className="w-full"
-                            />
-                            <div className="text-right">
-                                <Link href="/forgot-password">
-                                    <Button variant="link" className="text-xs px-0 text-muted-foreground hover:text-primary">
-                                        Forgot password?
-                                    </Button>
-                                </Link>
-                            </div>
-                        </div>
+                        
                         {error && (
                             <Alert variant="destructive">
                                 <AlertCircle className="h-4 w-4" />
@@ -91,6 +75,15 @@ function LoginForm() {
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
+
+                        {message && (
+                            <Alert variant="default" className="bg-green-50 border-green-300 text-green-700 dark:bg-green-900 dark:border-green-700 dark:text-green-300">
+                                <CheckCircle className="h-4 w-4" />
+                                <AlertTitle>Success</AlertTitle>
+                                <AlertDescription>{message}</AlertDescription>
+                            </Alert>
+                        )}
+
                         <Button
                             type="submit"
                             className="w-full"
@@ -99,10 +92,10 @@ function LoginForm() {
                             {isLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Signing in...
+                                    Sending...
                                 </>
                             ) : (
-                                'Sign In'
+                                'Send Reset Link'
                             )}
                         </Button>
                     </form>
@@ -110,11 +103,12 @@ function LoginForm() {
                 <CardFooter>
                     <div className="w-full text-center">
                         <p className="text-sm text-muted-foreground">
-                            Don&apos;t have an account?{' '}
+                            Remember your password?{' '}
                             <Link
-                                href="/register"
+                                href="/login"
                                 className="text-primary hover:underline font-medium"
-                            >                        Create one now
+                            >
+                                Sign In
                             </Link>
                         </p>
                     </div>
@@ -124,7 +118,7 @@ function LoginForm() {
     )
 }
 
-export default function Login() {
+export default function ForgotPasswordPage() {
     return (
         <Suspense fallback={
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -134,7 +128,7 @@ export default function Login() {
                 </div>
             </div>
         }>
-            <LoginForm />
+            <ForgotPasswordForm />
         </Suspense>
     )
 }

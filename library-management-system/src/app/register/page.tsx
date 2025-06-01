@@ -54,10 +54,11 @@ export default function Register() {
         if (!validateForm()) return
 
         setIsLoading(true)
-        try {
-            await signUp(
+        try {            await signUp(
                 formData.email,
                 formData.password,
+                formData.username,
+                formData.fullName
             )
             router.push('/dashboard')
         } catch (error) {

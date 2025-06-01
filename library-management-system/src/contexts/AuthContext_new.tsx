@@ -42,89 +42,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const syncUserProfile = async (currentUser: User) => {
         try {
-            // First check if user exists by user_id
-            const { data: existingUserById, error: checkIdError } = await supabase
+            // First check if user exists
+            const { data: existingUser, error: checkError } = await supabase
                 .from('users')
                 .select('*')
                 .eq('user_id', currentUser.id)
                 .maybeSingle()
 
-            if (checkIdError) {
-                console.error('Error checking user by ID:', checkIdError)
-                throw checkIdError;
+            if (checkError) {
+                console.error('Error checking user:', checkError)
+                throw checkError;
             }
 
-            if (existingUserById) {
-                setUserRole((existingUserById as any).role || 'user');
-                return; // User profile already exists and is synced by ID
-            }
-
-            // If user doesn't exist by ID, check if email is already in use by another user
-            if (currentUser.email) {
-                const { data: existingUserByEmailData, error: checkEmailError } = await supabase
+            if (!existingUser) {
+                // If user doesn't exist, create new user record
+                const { error: insertError } = await supabase
                     .from('users')
-                    .select('user_id, email, role')
-                    .eq('email', currentUser.email)
-                    .maybeSingle()
+                    .insert([
+                        {
+                            user_id: currentUser.id,
+                            email: currentUser.email,
+                            username: currentUser.email?.split('@')[0] || 'user',
+                            full_name: currentUser.user_metadata.full_name || 'Unknown',
+                            password_hash: 'PLACEHOLDER',
+                            membership_type: 'regular',
+                            role: 'user',
+                        }
+                    ])
+                    .select()
+                    .single()
 
-                if (checkEmailError) {
-                    console.error('Error checking user by email:', checkEmailError)
-                    throw checkEmailError;
+                if (insertError) {
+                    console.error('Error creating user profile:', insertError)
+                    throw new Error('Failed to create user profile');
                 }
-
-                if (existingUserByEmailData && typeof existingUserByEmailData === 'object' && 'user_id' in existingUserByEmailData) {
-                    const profileData = existingUserByEmailData as { user_id: string; email: string; role: string; };
-
-                    if (profileData.user_id === currentUser.id) {
-                        // This case should ideally be caught by the existingUserById check earlier,
-                        // but if reached, it means the profile matches the current auth user.
-                        setUserRole(profileData.role || 'user');
-                        console.log(`User profile for ${currentUser.email} (ID: ${currentUser.id}) confirmed by email check.`);
-                    } else {
-                        // Email conflict: email is associated with a different user_id in your public 'users' table.
-                        // This is a critical data integrity issue.
-                        console.error(
-                            `CRITICAL DATA CONFLICT: Authenticated user (ID: ${currentUser.id}, Email: ${currentUser.email}) ` +
-                            `has an email that is already associated with a different user profile (ID: ${profileData.user_id}) ` +
-                            `in the public 'users' table. Using role ('${profileData.role || 'user'}') from existing public profile. ` +
-                            `This conflict needs manual investigation and resolution in the database.`
-                        );
-                        // Allow user to proceed but with the role from the existing public profile.
-                        setUserRole(profileData.role || 'user');
-                    }
-                    return; // Profile handling (matched or conflicted and logged) is done.
-                }
+                setUserRole('user');
+            } else {
+                setUserRole((existingUser as any).role || 'user');
             }
-
-            // If user doesn't exist by ID and email is not taken by another user (or the conflict was handled), create new user record
-            const { error: insertError } = await supabase
-                .from('users')
-                .insert([
-                    {
-                        user_id: currentUser.id,
-                        email: currentUser.email,
-                        username: currentUser.user_metadata?.username || currentUser.email?.split('@')[0] || 'user',
-                        full_name: currentUser.user_metadata?.full_name || 'Unknown',
-                        // password_hash: 'PLACEHOLDER', // Avoid storing placeholder passwords if not necessary
-                        membership_type: 'regular',
-                        role: 'user', // Default role for new users
-                    }
-                ])
-                .select()
-                .single()
-
-            if (insertError) {
-                console.error('Error creating user profile:', insertError)
-                // Check if the error is specifically the unique constraint violation for email
-                if (insertError.message.includes('users_email_key')) {
-                    // This means our earlier check somehow missed an existing email.
-                    // This could happen due to race conditions or if the email check was bypassed.
-                    console.error("Duplicate email error during insert, even after pre-check. Email:", currentUser.email);
-                    throw new Error(`Failed to create user profile: Email ${currentUser.email} already exists.`);
-                }
-                throw new Error('Failed to create user profile');
-            }
-            setUserRole('user');
         } catch (error) {
             console.error('Error syncing user profile:', error);
             throw error;

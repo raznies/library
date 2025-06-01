@@ -29,7 +29,7 @@ export default function RootLayout({
                 </main>
                 <Footer />
             </div>
-            <Toaster />
+            {/* <Toaster /> */}
         </AuthProvider>
         </body>
         </html>
